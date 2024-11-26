@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "ansible-tests"
+version = "0.1.0"
+description = ""
+authors = ["Diegiwg <diegiwg@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+ansible-dev-tools = "^24.11.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
