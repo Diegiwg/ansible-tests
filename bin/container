@@ -102,6 +102,8 @@ function createNode() {
             "${image}" /bin/bash -c "${script}"
     fi
 
+    ssh-keygen -R "[localhost]:${port}" >/dev/null 2>&1
+
     initTemp
     local ansibleInventory="${nodeName} "
     ansibleInventory+="ansible_host=localhost "
@@ -133,6 +135,8 @@ function removeNode() {
     else
         echo "Node '${nodeName}' does not exist."
     fi
+
+    ssh-keygen -R "[localhost]:${port}" >/dev/null 2>&1
 
     initTemp
     sed -i "/^${nodeName}/d" "${REPO_PATH}/.tmp/inventory.ini"
@@ -224,8 +228,8 @@ case "$COMMAND" in
 create)
     if [[ "$IMAGE" =~ "ubuntu" ]]; then
         create_script=$(loadDistScript "ubuntu")
-    # elif [[ "$IMAGE" =~ "amazonlinux" ]]; then
-    #     create_script=$(loadDistScript "amazonlinux")
+    elif [[ "$IMAGE" =~ "amazonlinux" ]]; then
+        create_script=$(loadDistScript "amazonlinux")
     else
         echo "Unsupported distribution: $IMAGE"
         exit 1

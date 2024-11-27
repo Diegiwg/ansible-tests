@@ -1,19 +1,21 @@
 #!/bin/bash
 
+yum update -y && yum install -y sudo shadow-utils initscripts openssh-server
+
 if ! id ":USER" &>/dev/null; then
     useradd -m -s /bin/bash :USER && echo ":USER::USER" | chpasswd
+    sudo sed -i '/^root/a ansible  ALL=(ALL) NOPASSWD:ALL' /etc/sudoers
 fi
 
 mkdir -p /home/:USER/.ssh
-echo ":SSH_KEY_CONTENT" >/home/:USER/.ssh/authorized_keys
 chown -R :USER::USER /home/:USER/.ssh
+echo ":SSH_KEY_CONTENT" >/home/:USER/.ssh/authorized_keys
 
 mkdir -p /run/sshd
 
-apt update && apt install -y openssh-server
-
 sed -i 's/#ListenAddress 0.0.0.0/ListenAddress 0.0.0.0/' /etc/ssh/sshd_config
 
-service ssh restart
+ssh-keygen -A
+nohup /usr/sbin/sshd -D &
 
 while :; do sleep 1; done
