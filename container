@@ -19,6 +19,16 @@ function initTemp() {
     fi
 }
 
+function initSSH() {
+    if [ ! -d "${REPO_PATH}/.ssh/" ]; then
+        mkdir -p "${REPO_PATH}/.ssh/"
+    fi  
+
+    if [ ! -f "${REPO_PATH}/.ssh/id_rsa.pub" ] || [ ! -f "${REPO_PATH}/.ssh/id_rsa" ]; then
+        ssh-keygen -t rsa -b 4096 -f "${REPO_PATH}/.ssh/id_rsa" -N "" -C "${USER}@tests"
+    fi
+}
+
 function createNode() {
     local engine=$1
     if [ -z "$engine" ]; then
@@ -112,12 +122,8 @@ function waitForSSH() {
     echo "SSH is now accessible on ${nodeName}."
 }
 
-if [ ! -f "${REPO_PATH}/ssh/id_rsa.pub" ]; then
-    ssh-keygen -t rsa -b 4096 -f "${REPO_PATH}/ssh/id_rsa" -N "" -C "${USER}@tests"
-    exit 1
-fi
-
-SSH_KEY_CONTENT="$(cat "${REPO_PATH}/ssh/id_rsa.pub")"
+initSSH
+SSH_KEY_CONTENT="$(cat "${REPO_PATH}/.ssh/id_rsa.pub")"
 
 SSH_SETUP_SCRIPT=$(
     cat <<EOF
