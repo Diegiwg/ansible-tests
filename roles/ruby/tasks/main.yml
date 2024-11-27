@@ -1,5 +1,15 @@
-#SPDX-License-Identifier: MIT-0
 ---
-- name: ruby | Debug
+- name: ruby | Ensure Ruby is installed
+  ansible.builtin.package:
+    name: ruby
+    state: present
+
+- name: ruby | Get installed Ruby version
+  ansible.builtin.shell:
+    cmd: ruby --version
+  register: version
+  changed_when: false
+
+- name: ruby | Show Ruby version
   ansible.builtin.debug:
-    msg: 'Ruby Role Debug'
+    msg: "{{ version.stdout }}"
