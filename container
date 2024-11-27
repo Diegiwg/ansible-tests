@@ -2,7 +2,8 @@
 
 set -e
 
-REPO_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
+USER="ansible"
+REPO_PATH="$(dirname "$(realpath "$0")")"
 
 function initTemp() {
     if [ ! -d "${REPO_PATH}/.tmp" ]; then
@@ -25,7 +26,7 @@ function initSSH() {
     fi  
 
     if [ ! -f "${REPO_PATH}/.ssh/id_rsa.pub" ] || [ ! -f "${REPO_PATH}/.ssh/id_rsa" ]; then
-        ssh-keygen -t rsa -b 4096 -f "${REPO_PATH}/.ssh/id_rsa" -N "" -C "${USER}@tests"
+        ssh-keygen -t rsa -b 4096 -f "${REPO_PATH}/.ssh/id_rsa" -C "${USER}@tests" -N "" -q > /dev/null 2>&1 && chmod 600 "${REPO_PATH}/.ssh/id_rsa"
     fi
 }
 
@@ -72,7 +73,7 @@ function createNode() {
     fi
 
     initTemp
-    echo "${nodeName} ansible_host=localhost ansible_port=${port} ansible_user=ansible ansible_ssh_private_key_file=${REPO_PATH}/ssh/id_rsa" >>"${REPO_PATH}/.tmp/inventory.ini"
+    echo "${nodeName} ansible_host=localhost ansible_port=${port} ansible_user=ansible ansible_ssh_private_key_file=${REPO_PATH}/.ssh/id_rsa" >>"${REPO_PATH}/.tmp/inventory.ini"
     echo "${nodeName}" >>"${REPO_PATH}/.tmp/nodes"
 
     waitForSSH "$nodeName" "$port"
@@ -110,7 +111,7 @@ function waitForSSH() {
 
     echo "Waiting for SSH service to be available on ${nodeName}..."
 
-    while ! ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i "${REPO_PATH}/ssh/id_rsa" ansible@localhost -p "$port" echo "SSH ready" &>/dev/null; do
+    while ! ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i "${REPO_PATH}/.ssh/id_rsa" "${USER}"@localhost -p "$port" echo "SSH ready" &>/dev/null; do
         count=$((count + 1))
         if [ "$count" -ge "$retries" ]; then
             echo "Timeout reached, SSH is not ready after ${retries} attempts."
@@ -127,14 +128,14 @@ SSH_KEY_CONTENT="$(cat "${REPO_PATH}/.ssh/id_rsa.pub")"
 
 SSH_SETUP_SCRIPT=$(
     cat <<EOF
-    if ! id "ansible" &>/dev/null; then
-        useradd -m -s /bin/bash ansible && echo "ansible:ansible" | chpasswd
+    if ! id "${USER}" &>/dev/null; then
+        useradd -m -s /bin/bash ${USER} && echo "${USER}:${USER}" | chpasswd
     fi
     
     mkdir -p /run/sshd
-    mkdir -p /home/ansible/.ssh
-    echo "${SSH_KEY_CONTENT}" > /home/ansible/.ssh/authorized_keys
-    chown -R ansible:ansible /home/ansible/.ssh
+    mkdir -p /home/${USER}/.ssh
+    echo "${SSH_KEY_CONTENT}" > /home/${USER}/.ssh/authorized_keys
+    chown -R ${USER}:${USER} /home/${USER}/.ssh
     sed -i 's/#ListenAddress 0.0.0.0/ListenAddress 0.0.0.0/' /etc/ssh/sshd_config
     
     apt update && apt install -y openssh-server
@@ -206,7 +207,7 @@ case "$COMMAND" in
         echo "Node '${NODE_NAME}' created successfully!"
         echo "Node IP: ${NODE_IP}"
         echo "Access the container via SSH:"
-        echo "      ssh ${USER}@localhost -p ${PORT} -i ./ssh/id_rsa"
+        echo "      ssh ${USER}@localhost -p ${PORT} -i .ssh/id_rsa"
         ;;
 
     remove)
