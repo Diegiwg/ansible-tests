@@ -2,14 +2,18 @@
 
 set -e
 
-NODE_NAME="node_a"
-IMAGE="ubuntu:22.04"
-PORT="2222"
-ENGINE="docker"
-
 REPO_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
 
-function checkNodesFile() {
+function initTemp() {
+    if [ ! -d "${REPO_PATH}/.tmp" ]; then
+        mkdir "${REPO_PATH}/.tmp"
+    fi
+
+    if [ ! -f "${REPO_PATH}/.tmp/inventory.ini" ]; then
+        touch "${REPO_PATH}/.tmp/inventory.ini"
+        echo "[local]" >>"${REPO_PATH}/.tmp/inventory.ini"
+    fi
+
     if [ ! -f "${REPO_PATH}/.tmp/nodes" ]; then
         touch "${REPO_PATH}/.tmp/nodes"
     fi
@@ -48,6 +52,7 @@ function createNode() {
 
     if $engine ps -a --format '{{.Names}}' | grep -q "^${nodeName}$"; then
         echo "Node '${nodeName}' already exists."
+        exit 1
     else
         $engine run -d \
             --name "${nodeName}" \
@@ -56,9 +61,11 @@ function createNode() {
             "${image}" /bin/bash -c "${script}"
     fi
 
-    # Register in .tmp/nodes
-    checkNodesFile
-    echo "${nodeName}" >> "${REPO_PATH}/.tmp/nodes"
+    initTemp
+    echo "${nodeName} ansible_host=localhost ansible_port=${port} ansible_user=ansible ansible_ssh_private_key_file=${REPO_PATH}/ssh/id_rsa" >>"${REPO_PATH}/.tmp/inventory.ini"
+    echo "${nodeName}" >>"${REPO_PATH}/.tmp/nodes"
+
+    waitForSSH "$nodeName" "$port"
 }
 
 function removeNode() {
@@ -80,27 +87,40 @@ function removeNode() {
         echo "Node '${nodeName}' does not exist."
     fi
 
-    # Remove from .tmp/nodes
-    checkNodesFile
+    initTemp
+    sed -i "/^${nodeName}/d" "${REPO_PATH}/.tmp/inventory.ini"
     sed -i "/^${nodeName}$/d" "${REPO_PATH}/.tmp/nodes"
 }
 
-usage() {
-    echo "Usage: $0 [--docker|--podman] --image <image> --port <port> --name <name> <command>"
-    echo "Commands:"
-    echo "  create    Create a new container with the provided configurations."
-    echo "  remove    Remove an existing container."
-    exit 1
+function waitForSSH() {
+    local nodeName=$1
+    local port=$2
+    local retries=30
+    local count=0
+
+    echo "Waiting for SSH service to be available on ${nodeName}..."
+
+    while ! ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i "${REPO_PATH}/ssh/id_rsa" ansible@localhost -p "$port" echo "SSH ready" &>/dev/null; do
+        count=$((count + 1))
+        if [ "$count" -ge "$retries" ]; then
+            echo "Timeout reached, SSH is not ready after ${retries} attempts."
+            exit 1
+        fi
+        sleep 5
+    done
+
+    echo "SSH is now accessible on ${nodeName}."
 }
 
 if [ ! -f "${REPO_PATH}/ssh/id_rsa.pub" ]; then
-    echo "Public SSH key not found at ${REPO_PATH}/ssh/id_rsa.pub"
+    ssh-keygen -t rsa -b 4096 -f "${REPO_PATH}/ssh/id_rsa" -N "" -C "${USER}@tests"
     exit 1
 fi
 
 SSH_KEY_CONTENT="$(cat "${REPO_PATH}/ssh/id_rsa.pub")"
 
-SSH_SETUP_SCRIPT=$(cat <<EOF
+SSH_SETUP_SCRIPT=$(
+    cat <<EOF
     if ! id "ansible" &>/dev/null; then
         useradd -m -s /bin/bash ansible && echo "ansible:ansible" | chpasswd
     fi
@@ -118,57 +138,76 @@ SSH_SETUP_SCRIPT=$(cat <<EOF
 EOF
 )
 
-# Argument parsing
+usage() {
+    echo "Usage: $0 <command> [options]"
+    echo "Commands:"
+    echo "  create       Create a new node"
+    echo "  remove       Remove a node"
+    echo "Options:"
+    echo "  --docker       Use Docker engine"
+    echo "  --podman       Use Podman engine"
+    echo "  --image        Set the image for the node"
+    echo "  --port         Set the port for the node"
+    echo "  --name         Set the name for the node"
+    exit 1
+}
+
+if [[ $# -lt 1 ]]; then
+    usage
+fi
+
+COMMAND="$1"
+shift
+
+NODE_NAME="node_a"
+IMAGE="ubuntu:22.04"
+PORT="2222"
+ENGINE="docker"
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --docker)
             ENGINE="docker"
             shift
             ;;
-
         --podman)
             ENGINE="podman"
             shift
             ;;
-
         --image)
             IMAGE="$2"
             shift 2
             ;;
-
         --port)
             PORT="$2"
             shift 2
             ;;
-
         --name)
             NODE_NAME="$2"
             shift 2
             ;;
-    esac
-    
-    case "$1" in
-        create)
-            shift
-            
-            createNode "$ENGINE" "$IMAGE" "$PORT" "$SSH_SETUP_SCRIPT" "$NODE_NAME"
-
-            NODE_IP="$($ENGINE inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${NODE_NAME}")"
-
-            echo "Node '${NODE_NAME}' created successfully!"
-            echo "Access the container via SSH: ssh ansible@localhost -p ${PORT} -i ./ssh/id_rsa"
-            echo "Container IP: ${NODE_IP}"
-
-            exit 0
-            ;;
-
-        remove)
-            shift
-            removeNode "$NODE_NAME" "$ENGINE"
-            exit 0
-            ;;
         *)
+            echo "Unknown argument: $1"
             usage
             ;;
     esac
 done
+
+case "$COMMAND" in
+    create)
+        createNode "$ENGINE" "$IMAGE" "$PORT" "$SSH_SETUP_SCRIPT" "$NODE_NAME"
+        NODE_IP="$($ENGINE inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${NODE_NAME}")"
+        echo "Node '${NODE_NAME}' created successfully!"
+        echo "Node IP: ${NODE_IP}"
+        echo "Access the container via SSH:"
+        echo "      ssh ${USER}@localhost -p ${PORT} -i ./ssh/id_rsa"
+        ;;
+
+    remove)
+        removeNode "$NODE_NAME" "$ENGINE"
+        ;;
+
+    *)
+        usage
+        ;;
+esac
