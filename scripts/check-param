@@ -1,0 +1,15 @@
+#!/bin/bash
+
+param="$1"
+error="$2"
+
+# Remove param= prefix
+param=${param#*=}
+
+# Remove error= prefix
+error=${error#*=}
+
+if [ -z "$param" ]; then
+    echo "$error"
+    exit 1
+fi
