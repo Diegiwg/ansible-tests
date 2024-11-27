@@ -73,7 +73,13 @@ function createNode() {
     fi
 
     initTemp
-    echo "${nodeName} ansible_host=localhost ansible_port=${port} ansible_user=ansible ansible_ssh_private_key_file=${REPO_PATH}/.ssh/id_rsa" >>"${REPO_PATH}/.tmp/inventory.ini"
+    local ansibleInventory="${nodeName} "
+    ansibleInventory+="ansible_host=localhost "
+    ansibleInventory+="ansible_port=${port} "
+    ansibleInventory+="ansible_user=ansible "
+    ansibleInventory+="ansible_become_pass=ansible "
+    ansibleInventory+="ansible_ssh_private_key_file=${REPO_PATH}/.ssh/id_rsa" 
+    echo "${ansibleInventory}" >>"${REPO_PATH}/.tmp/inventory.ini"
     echo "${nodeName}" >>"${REPO_PATH}/.tmp/nodes"
 
     waitForSSH "$nodeName" "$port"
