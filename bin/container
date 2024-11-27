@@ -23,11 +23,41 @@ function initTemp() {
 function initSSH() {
     if [ ! -d "${REPO_PATH}/.ssh/" ]; then
         mkdir -p "${REPO_PATH}/.ssh/"
-    fi  
+    fi
 
     if [ ! -f "${REPO_PATH}/.ssh/id_rsa.pub" ] || [ ! -f "${REPO_PATH}/.ssh/id_rsa" ]; then
-        ssh-keygen -t rsa -b 4096 -f "${REPO_PATH}/.ssh/id_rsa" -C "${USER}@tests" -N "" -q > /dev/null 2>&1 && chmod 600 "${REPO_PATH}/.ssh/id_rsa"
+        ssh-keygen -t rsa -b 4096 -f "${REPO_PATH}/.ssh/id_rsa" -C "${USER}@tests" -N "" -q >/dev/null 2>&1 && chmod 600 "${REPO_PATH}/.ssh/id_rsa"
     fi
+}
+
+initSSH
+SSH_KEY_CONTENT="$(cat "${REPO_PATH}/.ssh/id_rsa.pub")"
+
+function loadDistScript() {
+    local dist=$1
+
+    if [ -z "$dist" ]; then
+        echo "Please provide a distribution name as the first argument."
+        exit 1
+    fi
+
+    if [ ! -f "${REPO_PATH}/bin/dist/${dist}" ]; then
+        echo "Distribution script not found: ${REPO_PATH}/bin/dist/${dist}"
+        exit 1
+    fi
+
+    local script
+
+    # Load the distribution-specific script
+    script=$(cat "${REPO_PATH}/bin/dist/${dist}")
+
+    # Replace the USER placeholder with the actual user name
+    script="${script//:USER/"${USER}"}"
+
+    # Replace the SSH_KEY_CONTENT placeholder with the actual SSH key content
+    script="${script//:SSH_KEY_CONTENT/"${SSH_KEY_CONTENT}"}"
+
+    echo "${script}"
 }
 
 function createNode() {
@@ -78,7 +108,7 @@ function createNode() {
     ansibleInventory+="ansible_port=${port} "
     ansibleInventory+="ansible_user=ansible "
     ansibleInventory+="ansible_become_pass=ansible "
-    ansibleInventory+="ansible_ssh_private_key_file=${REPO_PATH}/.ssh/id_rsa" 
+    ansibleInventory+="ansible_ssh_private_key_file=${REPO_PATH}/.ssh/id_rsa"
     echo "${ansibleInventory}" >>"${REPO_PATH}/.tmp/inventory.ini"
     echo "${nodeName}" >>"${REPO_PATH}/.tmp/nodes"
 
@@ -129,28 +159,6 @@ function waitForSSH() {
     echo "SSH is now accessible on ${nodeName}."
 }
 
-initSSH
-SSH_KEY_CONTENT="$(cat "${REPO_PATH}/.ssh/id_rsa.pub")"
-
-SSH_SETUP_SCRIPT=$(
-    cat <<EOF
-    if ! id "${USER}" &>/dev/null; then
-        useradd -m -s /bin/bash ${USER} && echo "${USER}:${USER}" | chpasswd
-    fi
-    
-    mkdir -p /run/sshd
-    mkdir -p /home/${USER}/.ssh
-    echo "${SSH_KEY_CONTENT}" > /home/${USER}/.ssh/authorized_keys
-    chown -R ${USER}:${USER} /home/${USER}/.ssh
-    sed -i 's/#ListenAddress 0.0.0.0/ListenAddress 0.0.0.0/' /etc/ssh/sshd_config
-    
-    apt update && apt install -y openssh-server
-    service ssh restart
-
-    while :; do sleep 1; done
-EOF
-)
-
 usage() {
     echo "Usage: <command> [options]"
     echo "Commands:"
@@ -181,68 +189,77 @@ FLAG_ALL="false"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --docker)
-            ENGINE="docker"
-            shift
-            ;;
-        --podman)
-            ENGINE="podman"
-            shift
-            ;;
-        --image)
-            IMAGE="$2"
-            shift 2
-            ;;
-        --port)
-            PORT="$2"
-            shift 2
-            ;;
-        --name)
-            NODE_NAME="$2"
-            shift 2
-            ;;
-        --all)
-            FLAG_ALL="true"
-            shift
-            ;;
-        *)
-            echo "Unknown argument: $1"
-            usage
-            ;;
+    --docker)
+        ENGINE="docker"
+        shift
+        ;;
+    --podman)
+        ENGINE="podman"
+        shift
+        ;;
+    --image)
+        IMAGE="$2"
+        shift 2
+        ;;
+    --port)
+        PORT="$2"
+        shift 2
+        ;;
+    --name)
+        NODE_NAME="$2"
+        shift 2
+        ;;
+    --all)
+        FLAG_ALL="true"
+        shift
+        ;;
+    *)
+        echo "Unknown argument: $1"
+        usage
+        ;;
     esac
 done
 
 case "$COMMAND" in
-    create)
-        createNode "$ENGINE" "$IMAGE" "$PORT" "$SSH_SETUP_SCRIPT" "$NODE_NAME"
-        NODE_IP="$($ENGINE inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${NODE_NAME}")"
-        echo "Node '${NODE_NAME}' created successfully!"
-        echo "Node IP: ${NODE_IP}"
-        echo "Access the container via SSH:"
-        echo "      ssh ${USER}@localhost -p ${PORT} -i .ssh/id_rsa"
-        ;;
+create)
+    if [[ "$IMAGE" =~ "ubuntu" ]]; then
+        create_script=$(loadDistScript "ubuntu")
+    # elif [[ "$IMAGE" =~ "amazonlinux" ]]; then
+    #     create_script=$(loadDistScript "amazonlinux")
+    else
+        echo "Unsupported distribution: $IMAGE"
+        exit 1
+    fi
 
-    remove)
-        if [ "$FLAG_ALL" = "true" ]; then
-            echo "Removing all nodes..."
-            
-            nodes=$(cat "${REPO_PATH}/.tmp/nodes")
-            for node in $nodes; do
-                removeNode "$node" "$ENGINE"
-            done
-        else
-            removeNode "$NODE_NAME" "$ENGINE"
-        fi
-        ;;
+    createNode "$ENGINE" "$IMAGE" "$PORT" "$create_script" "$NODE_NAME"
+    NODE_IP="$($ENGINE inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${NODE_NAME}")"
+    echo "Node '${NODE_NAME}' created successfully!"
+    echo "Node IP: ${NODE_IP}"
+    echo "Access the container via SSH:"
+    echo "      ssh ${USER}@localhost -p ${PORT} -i .ssh/id_rsa"
+    ;;
 
-    list)
+remove)
+    if [ "$FLAG_ALL" = "true" ]; then
+        echo "Removing all nodes..."
+
         nodes=$(cat "${REPO_PATH}/.tmp/nodes")
         for node in $nodes; do
-            echo "$node"
+            removeNode "$node" "$ENGINE"
         done
-        ;;
+    else
+        removeNode "$NODE_NAME" "$ENGINE"
+    fi
+    ;;
 
-    *)
-        usage
-        ;;
+list)
+    nodes=$(cat "${REPO_PATH}/.tmp/nodes")
+    for node in $nodes; do
+        echo "$node"
+    done
+    ;;
+
+*)
+    usage
+    ;;
 esac
