@@ -1,0 +1,8 @@
+---
+- name: Install Ruby
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Install Ruby
+      ansible.builtin.import_role:
+        name: ruby

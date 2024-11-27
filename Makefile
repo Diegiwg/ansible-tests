@@ -1,8 +1,8 @@
 .DEFAULT_GOAL=help
 
 create-node: ## Create a new node
-	@bash ./scripts/check-param param=$(name) error='Please provide a node name with the name=<node_name> option'
-	@bash ./scripts/check-param param=$(port) error='Please provide a port number with the port=<port_number> option'
+	@bash ./scripts/check-param param='$(name)' error='Please provide a node name with the name=<node_name> option'
+	@bash ./scripts/check-param param='$(port)' error='Please provide a port number with the port=<port_number> option'
 
 	@bash ./scripts/container create \
 		--docker \
@@ -11,7 +11,7 @@ create-node: ## Create a new node
 		$(if $(port),--port $(port),)
 
 remove-node: ## Remove a node
-	@bash ./scripts/check-param param="${all}${name}" error='Please provide a node name with the name=<node_name> or all=<true> option'
+	@bash ./scripts/check-param param='${all}${name}' error='Please provide a node name with the name=<node_name> or all=<true> option'
 
 	@bash ./scripts/container remove \
 		--docker \
@@ -22,12 +22,12 @@ list-node: ## List nodes
 	@bash ./scripts/container list
 
 create-role: ## Create a new ansible role. 
-	@bash ./scripts/check-param param=$(name) error='Please provide a role name with the name=<role_name> option'
+	@bash ./scripts/check-param param='$(name)' error='Please provide a role name with the name=<role_name> option'
 	
 	@cd roles && ansible-galaxy role init $(name)
 
 remove-role: ## Remove an ansible role.
-	@bash ./scripts/check-param param=$(name) error='Please provide a role name with the name=<role_name> option'
+	@bash ./scripts/check-param param='$(name)' error='Please provide a role name with the name=<role_name> option'
 	
 	@cd roles && \
 		if [ -d $(name) ]; then \

@@ -1,0 +1,5 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: ruby | Debug
+  ansible.builtin.debug:
+    msg: 'Ruby Role Debug'
