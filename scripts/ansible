@@ -1,0 +1,67 @@
+#!/bin/bash
+
+set -e
+
+REPO_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
+
+usage() {
+    echo "Usage: <command> [options]"
+    echo "Commands:"
+    echo "  exec            Execute a playbook by name"
+    echo "Options:"
+    echo "  --name          Set the playbook name"
+    echo "  --target        Set the target hosts"
+    exit 1
+}
+
+COMMAND="$1"
+if [ -z "$COMMAND" ]; then
+    usage
+fi
+shift
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --name)
+            PARAM_NAME="$2"
+            shift 2
+            ;;
+
+        --target)
+            PARAM_TARGET="$2"
+            shift 2
+            ;;
+
+        *)
+            echo "Unknown argument: $1"
+            usage
+            ;;
+    esac
+done
+
+case "$COMMAND" in
+    exec)
+        if [ -z "$PARAM_NAME" ]; then
+            echo "Please provide a playbook name with the --name option."
+            exit 1
+        fi
+
+        # Check if the playbook exists
+        if [ ! -f "${REPO_PATH}/playbooks/${PARAM_NAME}.yml" ]; then
+            echo "Could not find playbook '${PARAM_NAME}'."
+            exit 1
+        fi
+
+        if [ -n "$PARAM_TARGET" ]; then
+            PARAM_TARGET=" --limit ${PARAM_TARGET}"
+        fi
+
+        cd "${REPO_PATH}"
+        ansible-playbook \
+            "playbooks/${PARAM_NAME}.yml" \
+            ${PARAM_TARGET}
+        ;;
+    *)
+        usage
+        ;;
+esac

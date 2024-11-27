@@ -152,7 +152,7 @@ EOF
 )
 
 usage() {
-    echo "Usage: $0 <command> [options]"
+    echo "Usage: <command> [options]"
     echo "Commands:"
     echo "  create       Create a new node"
     echo "  remove       Remove a node"
