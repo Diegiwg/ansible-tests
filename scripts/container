@@ -3,7 +3,7 @@
 set -e
 
 USER="ansible"
-REPO_PATH="$(dirname "$(realpath "$0")")"
+REPO_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
 
 function initTemp() {
     if [ ! -d "${REPO_PATH}/.tmp" ]; then
@@ -171,6 +171,8 @@ IMAGE="ubuntu:22.04"
 PORT="2222"
 ENGINE="docker"
 
+FLAG_ALL="false"
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --docker)
@@ -193,6 +195,10 @@ while [[ $# -gt 0 ]]; do
             NODE_NAME="$2"
             shift 2
             ;;
+        --all)
+            FLAG_ALL="true"
+            shift
+            ;;
         *)
             echo "Unknown argument: $1"
             usage
@@ -211,7 +217,23 @@ case "$COMMAND" in
         ;;
 
     remove)
-        removeNode "$NODE_NAME" "$ENGINE"
+        if [ "$FLAG_ALL" = "true" ]; then
+            echo "Removing all nodes..."
+            
+            nodes=$(cat "${REPO_PATH}/.tmp/nodes")
+            for node in $nodes; do
+                removeNode "$node" "$ENGINE"
+            done
+        else
+            removeNode "$NODE_NAME" "$ENGINE"
+        fi
+        ;;
+
+    list)
+        nodes=$(cat "${REPO_PATH}/.tmp/nodes")
+        for node in $nodes; do
+            echo "$node"
+        done
         ;;
 
     *)
