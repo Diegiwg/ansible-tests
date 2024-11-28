@@ -1,10 +1,10 @@
 #!/bin/bash
 
-yum update -y && yum install -y sudo shadow-utils initscripts openssh-server
+yum update -y && yum install -y sudo shadow-utils openssh-server
 
 if ! id "@USER" &>/dev/null; then
     useradd -m -s /bin/bash @USER && echo "@USER:@USER" | chpasswd
-    sudo sed -i '/^root/a ansible  ALL=(ALL) NOPASSWD:ALL' /etc/sudoers
+    sudo sed -i '/^root/a @USER  ALL=(ALL) NOPASSWD:ALL' /etc/sudoers
 fi
 
 mkdir -p /home/@USER/.ssh
