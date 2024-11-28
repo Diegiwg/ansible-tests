@@ -1,12 +1,12 @@
 #!/bin/bash
 
-if ! id ":USER" &>/dev/null; then
-    useradd -m -s /bin/bash :USER && echo ":USER::USER" | chpasswd
+if ! id "@USER" &>/dev/null; then
+    useradd -m -s /bin/bash @USER && echo "@USER:@USER" | chpasswd
 fi
 
-mkdir -p /home/:USER/.ssh
-echo ":SSH_KEY_CONTENT" >/home/:USER/.ssh/authorized_keys
-chown -R :USER::USER /home/:USER/.ssh
+mkdir -p /home/@USER/.ssh
+echo "@SSH_KEY_CONTENT" >/home/@USER/.ssh/authorized_keys
+chown -R @USER:@USER /home/@USER/.ssh
 
 mkdir -p /run/sshd
 

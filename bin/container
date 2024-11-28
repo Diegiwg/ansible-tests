@@ -52,10 +52,10 @@ function loadDistScript() {
     script=$(cat "${REPO_PATH}/bin/dist/${dist}")
 
     # Replace the USER placeholder with the actual user name
-    script="${script//:USER/"${USER}"}"
+    script="${script//@USER/"${USER}"}"
 
     # Replace the SSH_KEY_CONTENT placeholder with the actual SSH key content
-    script="${script//:SSH_KEY_CONTENT/"${SSH_KEY_CONTENT}"}"
+    script="${script//@SSH_KEY_CONTENT/"${SSH_KEY_CONTENT}"}"
 
     echo "${script}"
 }

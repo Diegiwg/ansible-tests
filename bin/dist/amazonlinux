@@ -2,14 +2,14 @@
 
 yum update -y && yum install -y sudo shadow-utils initscripts openssh-server
 
-if ! id ":USER" &>/dev/null; then
-    useradd -m -s /bin/bash :USER && echo ":USER::USER" | chpasswd
+if ! id "@USER" &>/dev/null; then
+    useradd -m -s /bin/bash @USER && echo "@USER:@USER" | chpasswd
     sudo sed -i '/^root/a ansible  ALL=(ALL) NOPASSWD:ALL' /etc/sudoers
 fi
 
-mkdir -p /home/:USER/.ssh
-chown -R :USER::USER /home/:USER/.ssh
-echo ":SSH_KEY_CONTENT" >/home/:USER/.ssh/authorized_keys
+mkdir -p /home/@USER/.ssh
+chown -R @USER:@USER /home/@USER/.ssh
+echo "@SSH_KEY_CONTENT" >/home/@USER/.ssh/authorized_keys
 
 mkdir -p /run/sshd
 
