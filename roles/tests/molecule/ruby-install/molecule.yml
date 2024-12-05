@@ -2,17 +2,5 @@
 dependency:
   name: galaxy
 platforms:
-  - name: ubuntu-test-ruby-install
+  - name: ubuntu-22-04-test-ruby-install
     image: ubuntu:22.04
-
-  # - name: debian-test-ruby-install
-  #   image: debian:11
-
-  # - name: centos-test-ruby-install
-  #   image: centos:8
-
-  # - name: fedora-test-ruby-install
-  #   image: fedora:35
-
-  # - name: alpine-test-ruby-install
-  #   image: alpine:3.16
