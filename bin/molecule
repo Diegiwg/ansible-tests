@@ -3,7 +3,8 @@
 set -e
 
 REPO_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
-TESTS_PATH="${REPO_PATH}/roles/extensions/molecule"
+MOLECULE_PATH="${REPO_PATH}/roles/tests/"
+TESTS_PLAYBOOKS_PATH="${REPO_PATH}/roles/tests/molecule"
 
 usage() {
     echo "Usage: <command> [options]"
@@ -42,12 +43,12 @@ case "$COMMAND" in
         fi
 
         # Check if the test exists
-        if [ ! -d "${TESTS_PATH}/${TEST_NAME}" ]; then
+        if [ ! -d "${TESTS_PLAYBOOKS_PATH}/${TEST_NAME}" ]; then
             echo "Could not find test '${TEST_NAME}'."
             exit 1
         fi
 
-        cd "${REPO_PATH}/roles/extensions"
+        cd "${MOLECULE_PATH}"
         molecule test --scenario-name "${TEST_NAME}"
         ;;
     *)
