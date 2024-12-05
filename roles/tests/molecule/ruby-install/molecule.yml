@@ -1,6 +1,10 @@
 ---
 dependency:
   name: galaxy
+
 platforms:
   - name: ubuntu-22-04-test-ruby-install
-    image: ubuntu:22.04
+    image: diegiwg/ubuntu22_04:dev-2
+
+  - name: ubuntu-20-04-test-ruby-install
+    image: diegiwg/ubuntu20_04:dev-2
