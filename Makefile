@@ -1,15 +1,20 @@
-.PHONY: ansible container molecule help
+.PHONY: ansible container docker molecule help
 .DEFAULT_GOAL=help
 
-ansible: ## Run ansible utils    ❯ make ansible   [command] [args]
+ansible: ## Run ansible utils    ❯ make ansible   [cmd] [args]
 	@bash ./bin/ansible \
-		$(if $(command),$(command),) \
+		$(if $(cmd),$(cmd),) \
 		$(if $(args),$(args),)
 
-container: ## Run container utils  ❯ make container [command] [args]
+container: ## Run container utils  ❯ make container [cmd] [args]
 	@bash ./bin/container \
-		$(if $(command),$(command),) \
+		$(if $(cmd),$(cmd),) \
 		$(if $(args),$(args),)
+
+docker: ## Run docker utils     ❯ make docker    [cmd] [image]
+	@bash ./bin/docker \
+		$(if $(cmd),$(cmd),) \
+		$(if $(image),--name $(image),)
 
 molecule: ## Run molecule utils   ❯ make molecule  [test]
 	@bash ./bin/molecule \

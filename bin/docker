@@ -1,0 +1,99 @@
+#!/bin/bash
+
+set -e
+
+REPO_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
+IMAGES_SOURCE_PATH="${REPO_PATH}/images"
+
+usage() {
+    echo "Usage: <command> [options]"
+    echo "Commands:"
+    echo "  build           Build the specified docker image"
+    echo "  inspect         Inspect the specified docker image"
+    echo "  publish         Publish the specified docker image to docker hub"
+    echo "Options:"
+    echo "  --name          Set the image name"
+    exit 1
+}
+
+COMMAND="$1"
+if [ -z "$COMMAND" ]; then
+    echo "$COMMAND"
+    usage
+fi
+shift
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --name)
+            IMAGE_NAME="$2"
+            shift 2
+            ;;
+
+        *)
+            echo "Unknown argument: $1"
+            usage
+            ;;
+    esac
+done
+
+case "$COMMAND" in
+    build)
+        if [ -z "$IMAGE_NAME" ]; then
+            echo "Please provide a image name with the --name option."
+            exit 1
+        fi
+
+        if [ ! -f "${IMAGES_SOURCE_PATH}/${IMAGE_NAME}.dockerfile" ]; then
+            echo "Could not find image '${IMAGE_NAME}'."
+            exit 1
+        fi
+
+        echo "Building image: $(cat "$IMAGES_SOURCE_PATH/$IMAGE_NAME.tag")"
+
+        docker build \
+            -t "$(cat "$IMAGES_SOURCE_PATH/$IMAGE_NAME.tag")" \
+            -f "$IMAGES_SOURCE_PATH/$IMAGE_NAME.dockerfile" \
+            "$IMAGES_SOURCE_PATH/context"
+        ;;
+
+    inspect)
+        if [ -z "$IMAGE_NAME" ]; then
+            echo "Please provide a image name with the --name option."
+            exit 1
+        fi
+
+        if [ ! -f "${IMAGES_SOURCE_PATH}/${IMAGE_NAME}.dockerfile" ]; then
+            echo "Could not find image '${IMAGE_NAME}'."
+            exit 1
+        fi
+
+        echo "Inspecting image: $(cat "$IMAGES_SOURCE_PATH/$IMAGE_NAME.tag")"
+
+        docker run -it "$(cat "$IMAGES_SOURCE_PATH/$IMAGE_NAME.tag")" bash
+        ;;
+
+    publish)
+        if [ -z "$IMAGE_NAME" ]; then
+            echo "Please provide a image name with the --name option."
+            exit 1
+        fi
+
+        if [ ! -f "${IMAGES_SOURCE_PATH}/${IMAGE_NAME}.dockerfile" ]; then
+            echo "Could not find image '${IMAGE_NAME}'."
+            exit 1
+        fi
+
+        # Check if user is logged in docker hub
+        if ! docker info | grep Username; then
+            echo "Please login to docker hub with 'docker login'."
+            exit 1
+        fi
+
+        # Publish the image to docker hub
+        docker push "$(cat "$IMAGES_SOURCE_PATH/$IMAGE_NAME.tag")"
+        ;;
+    *)
+        usage
+        ;;
+esac
