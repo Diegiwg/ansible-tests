@@ -2,7 +2,7 @@
   hosts: all
   gather_facts: false
   tasks:
-    - name: Run ruby role
+    - name: Run ruby install
       ansible.builtin.include_role:
         name: ruby
         tasks_from: ruby-install
