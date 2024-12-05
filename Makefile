@@ -1,16 +1,21 @@
 .PHONY: ansible container molecule help
 .DEFAULT_GOAL=help
 
-ansible: ## Run ansible utils        ❯ make ansible   [command] [args]
-	@bash ./bin/ansible $(if $(command),$(command),) $(if $(args),$(args),)
+ansible: ## Run ansible utils    ❯ make ansible   [command] [args]
+	@bash ./bin/ansible \
+		$(if $(command),$(command),) \
+		$(if $(args),$(args),)
 
-container: ## Run container utils      ❯ make container [command] [args]
-	@bash ./bin/container $(if $(command),$(command),) $(if $(args),$(args),)
+container: ## Run container utils  ❯ make container [command] [args]
+	@bash ./bin/container \
+		$(if $(command),$(command),) \
+		$(if $(args),$(args),)
 
-molecule: ## TEMP: Run molecule utils ❯ make molecule  [test]
-	@cd roles/extensions && molecule test --scenario-name $(if $(test),$(test),)
+molecule: ## Run molecule utils   ❯ make molecule  [test]
+	@bash ./bin/molecule \
+		$(if $(test),test --name $(test),)
 
-help: ## Show this help           ❯ make help
+help: ## Show this help       ❯ make help
 # `help' function obtained from GitHub gist: https://gist.github.com/prwhite/8168133?permalink_comment_id=4160123#gistcomment-4160123
 	@echo Ansible Tests
 	@echo

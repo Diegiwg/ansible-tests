@@ -247,7 +247,7 @@ remove)
     if [ "$FLAG_ALL" = "true" ]; then
         echo "Removing all nodes..."
 
-        nodes=$(cat "${REPO_PATH}/.tmp/nodes")
+        nodes=$(cat "${REPO_PATH}/.tmp/nodes" 2>/dev/null || echo "")
         for node in $nodes; do
             removeNode "$node" "$ENGINE"
         done

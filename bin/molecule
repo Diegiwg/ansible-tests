@@ -1,0 +1,56 @@
+#!/bin/bash
+
+set -e
+
+REPO_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
+TESTS_PATH="${REPO_PATH}/roles/extensions/molecule"
+
+usage() {
+    echo "Usage: <command> [options]"
+    echo "Commands:"
+    echo "  test            Execute a molecule test by name"
+    echo "Options:"
+    echo "  --name          Set the test name"
+    exit 1
+}
+
+COMMAND="$1"
+if [ -z "$COMMAND" ]; then
+    usage
+fi
+shift
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --name)
+            TEST_NAME="$2"
+            shift 2
+            ;;
+
+        *)
+            echo "Unknown argument: $1"
+            usage
+            ;;
+    esac
+done
+
+case "$COMMAND" in
+    test)
+        if [ -z "$TEST_NAME" ]; then
+            echo "Please provide a test name with the --name option."
+            exit 1
+        fi
+
+        # Check if the test exists
+        if [ ! -d "${TESTS_PATH}/${TEST_NAME}" ]; then
+            echo "Could not find test '${TEST_NAME}'."
+            exit 1
+        fi
+
+        cd "${REPO_PATH}/roles/extensions"
+        molecule test --scenario-name "${TEST_NAME}"
+        ;;
+    *)
+        usage
+        ;;
+esac
