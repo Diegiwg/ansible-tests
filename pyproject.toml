@@ -7,7 +7,10 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.12"
-ansible-dev-tools = "^24.11.0"
+ansible-core = "2.14.1"
+ansible-lint = "5.4.0"
+molecule = "5.0.1"
+molecule-plugins = {version = "23.5.0", extras = ["docker"]}
 
 [build-system]
 requires = ["poetry-core"]
