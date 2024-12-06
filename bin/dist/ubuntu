@@ -10,10 +10,12 @@ chown -R @USER:@USER /home/@USER/.ssh
 
 mkdir -p /run/sshd
 
-apt update && apt install -y openssh-server
+apt update && apt install -y openssh-server sudo
 
 sed -i 's/#ListenAddress 0.0.0.0/ListenAddress 0.0.0.0/' /etc/ssh/sshd_config
 
 service ssh restart
+
+echo "@USER ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers
 
 while :; do sleep 1; done
