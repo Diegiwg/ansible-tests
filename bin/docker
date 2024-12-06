@@ -8,9 +8,9 @@ IMAGES_SOURCE_PATH="${REPO_PATH}/images"
 usage() {
     echo "Usage: <command> [options]"
     echo "Commands:"
-    echo "  build           Build the specified docker image"
-    echo "  inspect         Inspect the specified docker image"
-    echo "  publish         Publish the specified docker image to docker hub"
+    echo "  b|build           Build the specified docker image"
+    echo "  i|inspect         Inspect the specified docker image"
+    echo "  p|publish         Publish the specified docker image to docker hub"
     echo "Options:"
     echo "  --name          Set the image name"
     exit 1
@@ -38,7 +38,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$COMMAND" in
-    build)
+    b|build)
         if [ -z "$IMAGE_NAME" ]; then
             echo "Please provide a image name with the --name option."
             exit 1
@@ -57,7 +57,7 @@ case "$COMMAND" in
             "$IMAGES_SOURCE_PATH/context"
         ;;
 
-    inspect)
+    i|inspect)
         if [ -z "$IMAGE_NAME" ]; then
             echo "Please provide a image name with the --name option."
             exit 1
@@ -73,7 +73,7 @@ case "$COMMAND" in
         docker run -it "$(cat "$IMAGES_SOURCE_PATH/$IMAGE_NAME.tag")" bash
         ;;
 
-    publish)
+    p|publish)
         if [ -z "$IMAGE_NAME" ]; then
             echo "Please provide a image name with the --name option."
             exit 1

@@ -8,3 +8,6 @@ platforms:
 
   - name: ubuntu-20-04-test-ruby-install
     image: diegiwg/ubuntu20_04:dev-2
+
+  - name: ubuntu-18-04-test-ruby-install
+    image: diegiwg/ubuntu18_04:dev-2
