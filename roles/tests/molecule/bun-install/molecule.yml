@@ -1,0 +1,19 @@
+---
+dependency:
+  name: galaxy
+
+platforms:
+  - name: ubuntu-22-04-test-ruby-install
+    image: diegiwg/ubuntu22_04:dev-2
+
+  - name: ubuntu-20-04-test-ruby-install
+    image: diegiwg/ubuntu20_04:dev-2
+
+  - name: ubuntu-18-04-test-ruby-install
+    image: diegiwg/ubuntu18_04:dev-2
+
+  # - name: amazonlinux-2023-test-ruby-install
+  #   image: diegiwg/amazonlinux_2023:dev-3
+
+  # - name: amazonlinux-2022-test-ruby-install
+  #   image: diegiwg/amazonlinux_2022:dev-3

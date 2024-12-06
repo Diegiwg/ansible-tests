@@ -1,0 +1,9 @@
+---
+- name: Destroy
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Destroy a container
+      ansible.builtin.include_role:
+        name: utils
+        tasks_from: docker-destroy-node

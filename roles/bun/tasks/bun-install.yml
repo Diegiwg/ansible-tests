@@ -1,0 +1,126 @@
+---
+# Local vars used in this task
+# - bun_installed_check
+# - bun_installed_version
+
+# Remote vars used in this task
+# - distribution_info
+
+# File vars used in this task
+# - bun_arch
+# - bun_version
+# - bun_binary_name
+# - bun_install_path
+# - bun_symlink_path
+
+- name: bun | Validate and Load Distribution Variables
+  block:
+    - name: bun | Check if distribution_info is defined
+      ansible.builtin.assert:
+        that:
+          - distribution_info is defined
+        fail_msg: "The variable 'distribution_info' must be defined."
+
+    - name: bun | Load specific distribution vars
+      ansible.builtin.include_vars:
+        file: "{{ lookup('first_found', params.files) }}"
+      vars:
+        params:
+          files:
+            - "vars/{{ distribution_info }}.yml"
+            - "vars/main.yml"
+
+    - name: bun | Ensure all required variables are defined before loading distribution vars
+      ansible.builtin.assert:
+        that:
+          - "{{ expected_vars | selectattr('defined', 'equalto', false) | map(attribute='name') | list | length == 0 }}"
+        fail_msg: >
+          The following required variables are missing: {{ expected_vars | selectattr('defined', 'equalto', false) | map(attribute='name') | join(', ') }}
+      vars:
+        expected_vars:
+          - { name: "bun_arch", defined: "{{ bun_arch is defined }}" }
+          - { name: "bun_version", defined: "{{ bun_version is defined }}" }
+          - {
+              name: "bun_binary_name",
+              defined: "{{ bun_binary_name is defined }}",
+            }
+          - {
+              name: "bun_install_path",
+              defined: "{{ bun_install_path is defined }}",
+            }
+          - {
+              name: "bun_symlink_path",
+              defined: "{{ bun_symlink_path is defined }}",
+            }
+
+- name: bun | Ensure bun is installed and at the expected version
+  block:
+    - name: bun | Check if bun is installed
+      ansible.builtin.command: which "{{ bun_binary_name }}"
+      register: bun_installed_check
+      no_log: true
+      ignore_errors: true
+      changed_when: false
+
+    - name: bun | Get the installed bun version
+      when: bun_installed_check.rc == 0
+      ansible.builtin.shell:
+        cmd: "bun --version"
+      register: bun_installed_version
+      changed_when: false
+
+    - name: bun | Set 'bun_installed' to true if correct version is installed
+      when: bun_installed_check.rc == 0 and bun_version in bun_installed_version.stdout
+      ansible.builtin.set_fact:
+        bun_installed: true
+
+    - name: bun | Set 'bun_installed' to false if not installed or wrong version
+      when: bun_installed_check.rc != 0 or bun_version not in bun_installed_version.stdout
+      ansible.builtin.set_fact:
+        bun_installed: false
+
+- name: bun | Ensure unzip is installed if bun is not installed
+  when: not bun_installed
+  ansible.builtin.package:
+    name: unzip
+    state: present
+
+- name: bun | Download, install, and configure bun if not installed
+  when: not bun_installed
+  block:
+    - name: bun | Download bun binary from GitHub
+      ansible.builtin.get_url:
+        url: "https://github.com/oven-sh/bun/releases/download/bun-v{{ bun_version }}/bun-linux-{{ bun_arch }}.zip"
+        dest: "/tmp/bun-linux-{{ bun_arch }}.zip"
+        force_basic_auth: yes
+
+    - name: bun | Prepare bun installation directory
+      ansible.builtin.file:
+        path: "{{ bun_install_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: bun | Extract bun zip archive
+      ansible.builtin.unarchive:
+        src: "/tmp/bun-linux-{{ bun_arch }}.zip"
+        dest: "{{ bun_install_path }}"
+        remote_src: yes
+
+    - name: bun | Create symlink to bun binary
+      ansible.builtin.file:
+        src: "{{ bun_install_path }}/bun-linux-{{ bun_arch }}/{{ bun_binary_name }}"
+        dest: "{{ bun_symlink_path }}/{{ bun_binary_name }}"
+        state: link
+
+- name: bun | Ensure bun is installed with the correct version
+  block:
+    - name: bun | Retrieve installed bun version
+      ansible.builtin.shell:
+        cmd: "bun --version"
+      register: bun_version_info
+      changed_when: false
+
+    - name: bun | Assert bun version matches expected version
+      ansible.builtin.assert:
+        that: "'{{ bun_version }}' in bun_version_info.stdout"
+        fail_msg: "The installed bun version is not the expected '{{ bun_version }}'"

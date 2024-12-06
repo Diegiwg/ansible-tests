@@ -1,0 +1,5 @@
+# bun_arch: set for it distribution supported
+# bun_version: set for it distribution supported
+bun_binary_name: bun
+bun_install_path: ~/.bun
+bun_symlink_path: /usr/local/bin

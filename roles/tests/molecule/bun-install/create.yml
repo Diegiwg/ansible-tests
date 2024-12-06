@@ -1,0 +1,14 @@
+---
+- name: Create
+  hosts: localhost
+  gather_facts: false
+  vars:
+    molecule_inventory:
+      all:
+        hosts: {}
+        molecule: {}
+  tasks:
+    - name: Create a container
+      ansible.builtin.include_role:
+        name: utils
+        tasks_from: docker-create-node
