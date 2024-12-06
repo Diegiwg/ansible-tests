@@ -9,12 +9,12 @@ function initTemp() {
     if [ ! -d "${REPO_PATH}/.tmp" ]; then
         mkdir "${REPO_PATH}/.tmp"
     fi
-
+    
     if [ ! -f "${REPO_PATH}/.tmp/inventory.ini" ]; then
         touch "${REPO_PATH}/.tmp/inventory.ini"
         echo "[local]" >>"${REPO_PATH}/.tmp/inventory.ini"
     fi
-
+    
     if [ ! -f "${REPO_PATH}/.tmp/nodes" ]; then
         touch "${REPO_PATH}/.tmp/nodes"
     fi
@@ -24,7 +24,7 @@ function initSSH() {
     if [ ! -d "${REPO_PATH}/.ssh/" ]; then
         mkdir -p "${REPO_PATH}/.ssh/"
     fi
-
+    
     if [ ! -f "${REPO_PATH}/.ssh/id_rsa.pub" ] || [ ! -f "${REPO_PATH}/.ssh/id_rsa" ]; then
         ssh-keygen -t rsa -b 4096 -f "${REPO_PATH}/.ssh/id_rsa" -C "${USER}@tests" -N "" -q >/dev/null 2>&1 && chmod 600 "${REPO_PATH}/.ssh/id_rsa"
     fi
@@ -35,28 +35,28 @@ SSH_KEY_CONTENT="$(cat "${REPO_PATH}/.ssh/id_rsa.pub")"
 
 function loadDistScript() {
     local dist=$1
-
+    
     if [ -z "$dist" ]; then
         echo "Please provide a distribution name as the first argument."
         exit 1
     fi
-
+    
     if [ ! -f "${REPO_PATH}/bin/dist/${dist}" ]; then
         echo "Distribution script not found: ${REPO_PATH}/bin/dist/${dist}"
         exit 1
     fi
-
+    
     local script
-
+    
     # Load the distribution-specific script
     script=$(cat "${REPO_PATH}/bin/dist/${dist}")
-
+    
     # Replace the USER placeholder with the actual user name
     script="${script//@USER/"${USER}"}"
-
+    
     # Replace the SSH_KEY_CONTENT placeholder with the actual SSH key content
     script="${script//@SSH_KEY_CONTENT/"${SSH_KEY_CONTENT}"}"
-
+    
     echo "${script}"
 }
 
@@ -66,44 +66,44 @@ function createNode() {
         echo "Please provide an engine name (docker or podman) as the first argument."
         exit 1
     fi
-
+    
     local image=$2
     if [ -z "$image" ]; then
         echo "Please provide an image name as the second argument."
         exit 1
     fi
-
+    
     local port=$3
     if [ -z "$port" ]; then
         echo "Please provide a port number as the third argument."
         exit 1
     fi
-
+    
     local script=$4
     if [ -z "$script" ]; then
         echo "Please provide a script as the fourth argument."
         exit 1
     fi
-
+    
     local nodeName=$5
     if [ -z "$nodeName" ]; then
         echo "Please provide a node name as the fifth argument."
         exit 1
     fi
-
+    
     if $engine ps -a --format '{{.Names}}' | grep -q "^${nodeName}$"; then
         echo "Node '${nodeName}' already exists."
         exit 1
     else
         $engine run -d \
-            --name "${nodeName}" \
-            -p "${port}:22" \
-            --privileged \
-            "${image}" /bin/bash -c "${script}"
+        --name "${nodeName}" \
+        -p "${port}:22" \
+        --privileged \
+        "${image}" /bin/bash -c "${script}"
     fi
-
+    
     ssh-keygen -R "[localhost]:${port}" >/dev/null 2>&1
-
+    
     initTemp
     local ansibleInventory="${nodeName} "
     ansibleInventory+="ansible_host=localhost "
@@ -113,7 +113,7 @@ function createNode() {
     ansibleInventory+="ansible_ssh_private_key_file=${REPO_PATH}/.ssh/id_rsa"
     echo "${ansibleInventory}" >>"${REPO_PATH}/.tmp/inventory.ini"
     echo "${nodeName}" >>"${REPO_PATH}/.tmp/nodes"
-
+    
     waitForSSH "$nodeName" "$port"
 }
 
@@ -123,21 +123,21 @@ function removeNode() {
         echo "Please provide a node name as the first argument."
         exit 1
     fi
-
+    
     local engine=$2
     if [ -z "$engine" ]; then
         echo "Please provide an engine name (docker or podman) as the second argument."
         exit 1
     fi
-
+    
     if $engine ps -a --format '{{.Names}}' | grep -q "^${nodeName}$"; then
         $engine rm -f "${nodeName}"
     else
         echo "Node '${nodeName}' does not exist."
     fi
-
+    
     ssh-keygen -R "[localhost]:${port}" >/dev/null 2>&1
-
+    
     initTemp
     sed -i "/^${nodeName}/d" "${REPO_PATH}/.tmp/inventory.ini"
     sed -i "/^${nodeName}$/d" "${REPO_PATH}/.tmp/nodes"
@@ -148,9 +148,9 @@ function waitForSSH() {
     local port=$2
     local retries=30
     local count=0
-
+    
     echo "Waiting for SSH service to be available on ${nodeName}..."
-
+    
     while ! ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i "${REPO_PATH}/.ssh/id_rsa" "${USER}"@localhost -p "$port" echo "SSH ready" &>/dev/null; do
         count=$((count + 1))
         if [ "$count" -ge "$retries" ]; then
@@ -159,15 +159,15 @@ function waitForSSH() {
         fi
         sleep 5
     done
-
+    
     echo "SSH is now accessible on ${nodeName}."
 }
 
 usage() {
     echo "Usage: <command> [options]"
     echo "Commands:"
-    echo "  create       Create a new node"
-    echo "  remove       Remove a node"
+    echo "  c|create       Create a new node"
+    echo "  r|remove       Remove a node"
     echo "Options:"
     echo "  --docker       Use Docker engine"
     echo "  --podman       Use Podman engine"
@@ -193,77 +193,77 @@ FLAG_ALL="false"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-    --docker)
-        ENGINE="docker"
-        shift
+        --docker)
+            ENGINE="docker"
+            shift
         ;;
-    --podman)
-        ENGINE="podman"
-        shift
+        --podman)
+            ENGINE="podman"
+            shift
         ;;
-    --image)
-        IMAGE="$2"
-        shift 2
+        --image)
+            IMAGE="$2"
+            shift 2
         ;;
-    --port)
-        PORT="$2"
-        shift 2
+        --port)
+            PORT="$2"
+            shift 2
         ;;
-    --name)
-        NODE_NAME="$2"
-        shift 2
+        --name)
+            NODE_NAME="$2"
+            shift 2
         ;;
-    --all)
-        FLAG_ALL="true"
-        shift
+        --all)
+            FLAG_ALL="true"
+            shift
         ;;
-    *)
-        echo "Unknown argument: $1"
-        usage
+        *)
+            echo "Unknown argument: $1"
+            usage
         ;;
     esac
 done
 
 case "$COMMAND" in
-create)
-    if [[ "$IMAGE" =~ "ubuntu" ]]; then
-        create_script=$(loadDistScript "ubuntu")
-    elif [[ "$IMAGE" =~ "amazonlinux" ]]; then
-        create_script=$(loadDistScript "amazonlinux")
-    else
-        echo "Unsupported distribution: $IMAGE"
-        exit 1
-    fi
-
-    createNode "$ENGINE" "$IMAGE" "$PORT" "$create_script" "$NODE_NAME"
-    NODE_IP="$($ENGINE inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${NODE_NAME}")"
-    echo "Node '${NODE_NAME}' created successfully!"
-    echo "Node IP: ${NODE_IP}"
-    echo "Access the container via SSH:"
-    echo "      ssh ${USER}@localhost -p ${PORT} -i .ssh/id_rsa"
+    c|create)
+        if [[ "$IMAGE" =~ "ubuntu" ]]; then
+            create_script=$(loadDistScript "ubuntu")
+            elif [[ "$IMAGE" =~ "amazonlinux" ]]; then
+            create_script=$(loadDistScript "amazonlinux")
+        else
+            echo "Unsupported distribution: $IMAGE"
+            exit 1
+        fi
+        
+        createNode "$ENGINE" "$IMAGE" "$PORT" "$create_script" "$NODE_NAME"
+        NODE_IP="$($ENGINE inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${NODE_NAME}")"
+        echo "Node '${NODE_NAME}' created successfully!"
+        echo "Node IP: ${NODE_IP}"
+        echo "Access the container via SSH:"
+        echo "      ssh ${USER}@localhost -p ${PORT} -i .ssh/id_rsa"
     ;;
-
-remove)
-    if [ "$FLAG_ALL" = "true" ]; then
-        echo "Removing all nodes..."
-
-        nodes=$(cat "${REPO_PATH}/.tmp/nodes" 2>/dev/null || echo "")
+    
+    r|remove)
+        if [ "$FLAG_ALL" = "true" ]; then
+            echo "Removing all nodes..."
+            
+            nodes=$(cat "${REPO_PATH}/.tmp/nodes" 2>/dev/null || echo "")
+            for node in $nodes; do
+                removeNode "$node" "$ENGINE"
+            done
+        else
+            removeNode "$NODE_NAME" "$ENGINE"
+        fi
+    ;;
+    
+    list)
+        nodes=$(cat "${REPO_PATH}/.tmp/nodes")
         for node in $nodes; do
-            removeNode "$node" "$ENGINE"
+            echo "$node"
         done
-    else
-        removeNode "$NODE_NAME" "$ENGINE"
-    fi
     ;;
-
-list)
-    nodes=$(cat "${REPO_PATH}/.tmp/nodes")
-    for node in $nodes; do
-        echo "$node"
-    done
-    ;;
-
-*)
-    usage
+    
+    *)
+        usage
     ;;
 esac

@@ -7,7 +7,7 @@ REPO_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
 usage() {
     echo "Usage: <command> [options]"
     echo "Commands:"
-    echo "  exec            Execute a playbook by name"
+    echo "  e|exec            Execute a playbook by name"
     echo "Options:"
     echo "  --name          Set the playbook name"
     echo "  --target        Set the target hosts"
@@ -40,7 +40,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$COMMAND" in
-    exec)
+    e|exec)
         if [ -z "$PARAM_NAME" ]; then
             echo "Please provide a playbook name with the --name option."
             exit 1
